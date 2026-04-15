@@ -311,11 +311,13 @@ select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(2
 /* ── MOBILE ── */
 @media(max-width:900px){
   .sidebar{display:none}
-  .summary-bar{padding:4px 8px}
-  .summary-card{padding:4px 8px}
-  .summary-card .sc-val{font-size:9px;white-space:normal;word-break:break-all;}
-  .summary-card .sc-label{font-size:7px;white-space:normal}
-  .main-wrap{height:calc(100dvh - 48px - 36px - 40px)}
+  .summary-bar{padding:4px 8px;flex-wrap:wrap}
+  .summary-card{padding:3px 6px;min-width:0;flex:1 1 30%;border-bottom:1px solid var(--bdr);border-right:1px solid var(--bdr)}
+  .summary-card:nth-child(3n){border-right:none}
+  .summary-card:nth-last-child(-n+3){border-bottom:none}
+  .summary-card .sc-val{font-size:11px;white-space:nowrap;}
+  .summary-card .sc-label{font-size:7px;white-space:nowrap}
+  .main-wrap{height:calc(100dvh - 44px - 68px - 40px);overflow:visible}
   header{padding:0 10px;height:44px;gap:6px}
   .hdr-left{min-width:0;flex:1 1 auto;overflow:hidden}
   .hdr-left svg{height:18px;flex-shrink:0}
@@ -355,7 +357,7 @@ select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(2
     border:1px solid rgba(72,202,228,.15);
   }
   .mob-sheet-btn{
-    position:absolute;bottom:16px;left:10px;z-index:1001;
+    position:fixed;bottom:20px;left:10px;z-index:1001;
     background:var(--s1);border:1px solid var(--bdr);border-radius:20px;
     padding:7px 14px;font-family:'Barlow',var(--font-sans);font-size:11px;font-weight:700;
     color:var(--accent);cursor:pointer;letter-spacing:.5px;
@@ -593,6 +595,15 @@ select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(2
 <div class="mob-sheet" id="mobSheet">
   <div class="mob-sheet-handle">
     <span class="sh-title">AC List</span>
+    <div class="mob-sort-wrap" style="display:flex;align-items:center;gap:4px;margin-left:auto;margin-right:8px">
+      <span style="font-size:10px;color:var(--muted);letter-spacing:.5px">Sort</span>
+      <select id="mobSort" style="min-width:auto;padding:3px 22px 3px 6px;font-size:10px;background-size:8px;background-position:right 5px center;background:var(--s2);color:var(--txt);border:1px solid var(--bdr);border-radius:5px;font-family:'Barlow',var(--font-sans);font-weight:600;appearance:none;cursor:pointer;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 5px center">
+        <option value="val_desc">Value ↓</option>
+        <option value="val_asc">Value ↑</option>
+        <option value="name_asc">Name A-Z</option>
+        <option value="ac_asc">AC No ↑</option>
+      </select>
+    </div>
     <button class="sh-close" id="mobSheetClose">&times;</button>
   </div>
   <div class="sb-search">
@@ -877,13 +888,19 @@ document.getElementById('mobSheetClose').addEventListener('click', closeMobSheet
 document.getElementById('mobSheetOverlay').addEventListener('click', closeMobSheet);
 
 document.getElementById('mobSearch').addEventListener('input', buildMobList);
+document.getElementById('mobSort').addEventListener('change', buildMobList);
 
 function buildMobList(){
   const cfg = CONFIGS[currentType];
   const search = (document.getElementById('mobSearch').value||'').toLowerCase();
+  const sortMode = document.getElementById('mobSort') ? document.getElementById('mobSort').value : 'val_desc';
   let data = AC_DATA.filter(d =>
     !search || d.name.toLowerCase().includes(search) || String(d.n).includes(search)
-  ).sort((a,b) => cfg.listPct(b) - cfg.listPct(a));
+  );
+  if(sortMode==='val_desc') data.sort((a,b) => cfg.listPct(b) - cfg.listPct(a));
+  else if(sortMode==='val_asc') data.sort((a,b) => cfg.listPct(a) - cfg.listPct(b));
+  else if(sortMode==='name_asc') data.sort((a,b) => a.name.localeCompare(b.name));
+  else if(sortMode==='ac_asc') data.sort((a,b) => a.n - b.n);
 
   const maxPct = Math.max(...AC_DATA.map(d=>cfg.listPct(d)),1);
   const list = document.getElementById('mobList');
