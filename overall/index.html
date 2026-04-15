@@ -313,15 +313,15 @@ select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(2
   .sidebar{display:none}
   .summary-bar{padding:4px 8px}
   .summary-card{padding:4px 8px}
-  .summary-card .sc-val{font-size:12px}
-  .summary-card .sc-label{font-size:8px}
+  .summary-card .sc-val{font-size:9px;white-space:normal;word-break:break-all;}
+  .summary-card .sc-label{font-size:7px;white-space:normal}
   .main-wrap{height:calc(100dvh - 48px - 36px - 40px)}
   header{padding:0 10px;height:44px;gap:6px}
   .hdr-left{min-width:0;flex:1 1 auto;overflow:hidden}
   .hdr-left svg{height:18px;flex-shrink:0}
-  .hdr-left .title{font-size:11px;white-space:normal}
+  .hdr-left .title{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hdr-left .sub{display:none}
-  .hdr-left .tagline{font-size:9px;padding-left:6px;letter-spacing:.2px}
+  .hdr-left .tagline{display:none}
   .controls select{display:none}
   .controls{flex-wrap:nowrap;flex:0 0 auto;gap:4px;align-items:center}
   .donate-btn{padding:4px 8px;font-size:10px;white-space:nowrap;flex-shrink:0;margin-left:0}
@@ -355,7 +355,7 @@ select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(2
     border:1px solid rgba(72,202,228,.15);
   }
   .mob-sheet-btn{
-    position:absolute;bottom:16px;right:10px;z-index:1001;
+    position:absolute;bottom:16px;left:10px;z-index:1001;
     background:var(--s1);border:1px solid var(--bdr);border-radius:20px;
     padding:7px 14px;font-family:'Barlow',var(--font-sans);font-size:11px;font-weight:700;
     color:var(--accent);cursor:pointer;letter-spacing:.5px;
@@ -861,6 +861,66 @@ document.getElementById('themeBtn').onclick = () => {
   setTiles();
   renderMap(document.getElementById('mapType').value);
 };
+
+
+// Mobile sheet open/close
+document.getElementById('mobSheetBtn').addEventListener('click', () => {
+  document.getElementById('mobSheet').classList.add('open');
+  document.getElementById('mobSheetOverlay').classList.add('open');
+  buildMobList();
+});
+function closeMobSheet(){
+  document.getElementById('mobSheet').classList.remove('open');
+  document.getElementById('mobSheetOverlay').classList.remove('open');
+}
+document.getElementById('mobSheetClose').addEventListener('click', closeMobSheet);
+document.getElementById('mobSheetOverlay').addEventListener('click', closeMobSheet);
+
+document.getElementById('mobSearch').addEventListener('input', buildMobList);
+
+function buildMobList(){
+  const cfg = CONFIGS[currentType];
+  const search = (document.getElementById('mobSearch').value||'').toLowerCase();
+  let data = AC_DATA.filter(d =>
+    !search || d.name.toLowerCase().includes(search) || String(d.n).includes(search)
+  ).sort((a,b) => cfg.listPct(b) - cfg.listPct(a));
+
+  const maxPct = Math.max(...AC_DATA.map(d=>cfg.listPct(d)),1);
+  const list = document.getElementById('mobList');
+  let html = '';
+  data.forEach((d,i) => {
+    const barW = Math.max(2,(cfg.listPct(d)/maxPct)*100);
+    html += '<div class="sb-row" data-ac="'+d.n+'">'
+      +'<span class="sb-rank">'+(i+1)+'</span>'
+      +'<div class="sb-info"><div class="sb-name">'+d.name+'</div><div class="sb-ac">AC '+d.n+'</div></div>'
+      +'<div class="sb-bar-wrap"><div class="sb-bar"><div class="sb-bar-fill" style="width:'+barW+'%;background:'+cfg.barColor+'"></div></div></div>'
+      +'<span class="sb-val">'+cfg.listVal(d).toLocaleString('en-IN')+'</span>'
+      +'<span class="sb-pct">'+cfg.listPct(d).toFixed(1)+'%</span>'
+      +'</div>';
+  });
+  list.innerHTML = html;
+
+  list.querySelectorAll('.sb-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const acNo = parseInt(row.dataset.ac);
+      const feat = GEO.features.find(f => f.properties.n === acNo);
+      if(!feat) return;
+      closeMobSheet();
+      const bounds = L.geoJSON(feat).getBounds();
+      map.fitBounds(bounds,{padding:[60,60],maxZoom:10});
+      const cfg2 = CONFIGS[currentType];
+      const p = feat.properties;
+      const rows = cfg2.rows(p);
+      let h = '<div class="pop"><div class="pop-head">'+p.a+' ('+p.n+')</div>';
+      h += '<div class="pop-pc">'+p.pc+' PC</div><table>';
+      rows.forEach(r => {
+        h += '<tr'+(r[2]?' class="hl"':'')+'><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>';
+      });
+      h += '</table></div>';
+      L.popup({maxWidth:280}).setLatLng(bounds.getCenter()).setContent(h).openOn(map);
+    });
+  });
+}
 
 document.getElementById('mapType').onchange = e => {
   document.getElementById('mapTypeMobile').value = e.target.value;
